@@ -32,6 +32,19 @@ sam build
 sam local invoke AuthFunction -e events/auth.json
 ```
 
+> **Nota:** a Lambda lê a chave privada do SSM em runtime. Para rodar localmente, crie o parâmetro
+> `/oficina/auth/jwt-private-key` (SecureString) com a chave privada RSA, ou injete um mock nos testes.
+
+## Testes unitários
+
+```bash
+npm install
+npm test
+```
+
+Cobrem: validação de CPF (dígitos verificadores), assinatura RS256 com os claims do contrato e
+as respostas 200/400/404/403/500 do `POST /auth`.
+
 ## Deploy
 
 ```bash
