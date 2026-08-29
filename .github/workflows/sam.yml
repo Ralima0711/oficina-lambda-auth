@@ -12,6 +12,7 @@ permissions:
 
 env:
   AWS_DEFAULT_REGION: us-east-1
+  HAS_AWS: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
 
 jobs:
   build:
@@ -48,7 +49,12 @@ jobs:
         with:
           use-installer: true
 
+      - name: Skip deploy (sem credenciais AWS)
+        if: env.HAS_AWS != 'true'
+        run: echo "Deploy ignorado: configure AWS_ACCESS_KEY_ID e AWS_SECRET_ACCESS_KEY nos secrets."
+
       - name: Configure AWS credentials
+        if: env.HAS_AWS == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -57,9 +63,11 @@ jobs:
           aws-region: us-east-1
 
       - name: SAM build
+        if: env.HAS_AWS == 'true'
         run: sam build
 
       - name: SAM deploy
+        if: env.HAS_AWS == 'true'
         env:
           STACK: ${{ github.ref == 'refs/heads/main' && 'oficina-lambda-auth-prod' || 'oficina-lambda-auth-homolog' }}
           DB_HOST: ${{ secrets.DB_HOST }}
