@@ -1,0 +1,8 @@
+.aws-sam/
+samconfig.toml
+__pycache__/
+*.pyc
+.venv/
+.env
+.DS_Store
+events/auth.local.json

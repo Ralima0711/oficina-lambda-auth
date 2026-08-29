@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Lambda de autenticação por CPF (Tech Challenge SOAT Fase 3 — Grupo 183)
+
+Globals:
+  Function:
+    Timeout: 15
+    MemorySize: 256
+    Runtime: python3.12
+    Architectures:
+      - x86_64
+
+Parameters:
+  JwtIss:
+    Type: String
+    Default: oficina-lambda-auth
+  JwtAud:
+    Type: String
+    Default: oficina-mecanica-api
+  JwtTtl:
+    Type: Number
+    Default: 3600
+  DbHost:
+    Type: String
+    Default: ""
+  DbName:
+    Type: String
+    Default: oficina_mecanica
+  DbUser:
+    Type: String
+    Default: ""
+  DbPassword:
+    Type: String
+    NoEcho: true
+    Default: ""
+  JwtPrivateKeySsmName:
+    Type: String
+    Default: /oficina/jwt/private-key
+  VpcSubnetIds:
+    Type: CommaDelimitedList
+    Default: ""
+  VpcSecurityGroupIds:
+    Type: CommaDelimitedList
+    Default: ""
+
+Conditions:
+  HasVpc: !Not [!Equals [!Join ["", !Ref VpcSubnetIds], ""]]
+
+Resources:
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-auth"
+      Handler: app.handler
+      CodeUri: src/
+      Description: POST /auth — valida CPF, consulta cliente, emite JWT RS256
+      Environment:
+        Variables:
+          JWT_ISS: !Ref JwtIss
+          JWT_AUD: !Ref JwtAud
+          JWT_TTL: !Ref JwtTtl
+          JWT_PRIVATE_KEY_SSM: !Ref JwtPrivateKeySsmName
+          DB_HOST: !Ref DbHost
+          DB_NAME: !Ref DbName
+          DB_USER: !Ref DbUser
+          DB_PASSWORD: !Ref DbPassword
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+                - ssm:GetParameters
+              Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${JwtPrivateKeySsmName}"
+      VpcConfig:
+        !If
+          - HasVpc
+          - SubnetIds: !Ref VpcSubnetIds
+            SecurityGroupIds: !Ref VpcSecurityGroupIds
+          - !Ref AWS::NoValue
+
+Outputs:
+  AuthFunctionName:
+    Description: Nome da function para o plugin aws-lambda do Kong
+    Value: !Ref AuthFunction
+  AuthFunctionArn:
+    Value: !GetAtt AuthFunction.Arn

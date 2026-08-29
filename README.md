@@ -9,6 +9,8 @@ Valida o **CPF** do cliente, consulta sua existência e status na base de dados 
 
 Autenticação desacoplada da aplicação principal, exposta via **API Gateway (Kong, no EKS)**. Substitui o login por e-mail/senha da Fase 2 pela autenticação por CPF exigida na Fase 3.
 
+A pipeline SAM (`homolog` / `main`) já está neste repositório. O handler atual valida o CPF e devolve `501` até a consulta ao RDS e a assinatura RS256 serem implementadas (contrato: Johny).
+
 ## Tecnologias
 
 | Tecnologia | Papel |
@@ -35,11 +37,16 @@ sam local invoke AuthFunction -e events/auth.json
 ## Deploy
 
 ```bash
+cp samconfig.toml.example samconfig.toml
 sam build
 sam deploy --guided   # primeira vez; depois: sam deploy
 ```
 
 O deploy é automatizado via GitHub Actions nas branches `homolog` e `main`.
+
+Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`. Opcionais: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `LAMBDA_SUBNET_IDS`, `LAMBDA_SECURITY_GROUP_IDS` (RDS privado).
+
+Após o deploy, copie o output `AuthFunctionName` para o secret `AUTH_LAMBDA_FUNCTION_NAME` do repo `oficina-infra-k8s`.
 
 ## Diagrama
 
