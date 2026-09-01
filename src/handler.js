@@ -1,7 +1,7 @@
 'use strict';
 
 const { validar } = require('./cpf');
-const { assinar } = require('./jwt');
+const { assinar, TTL } = require('./jwt');
 const { buscarClientePorCpf } = require('./repo');
 
 const { SSMClient, GetParameterCommand } = require('@aws-sdk/client-ssm');
@@ -95,7 +95,7 @@ function criarHandler({ buscarClientePorCpf: buscar, ssm }) {
       return responder(200, {
         token,
         token_type: 'Bearer',
-        expires_in: 3600,
+        expires_in: TTL,
       });
     } catch (err) {
       // Loga com correlação; não vaza detalhe interno para o cliente.
@@ -107,7 +107,6 @@ function criarHandler({ buscarClientePorCpf: buscar, ssm }) {
 
 // Handler padrão usado pelo SAM em produção.
 // Em modo local (sam local invoke), JWT_PRIVATE_KEY pode ser usada para evitar o SSM.
-console.log('JWT_PRIVATE_KEY setada?', !!process.env.JWT_PRIVATE_KEY, 'tamanho:', (process.env.JWT_PRIVATE_KEY || '').length);
 const ssm = process.env.JWT_PRIVATE_KEY
   ? ssmLocal()
   : new SSMClient({ region: process.env.AWS_REGION || 'us-east-1' });

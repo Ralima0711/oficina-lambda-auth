@@ -19,6 +19,7 @@ function assinar(cliente, chavePrivada) {
     sub: String(cliente.id),
     cpf: cliente.cpf,
     client_id: cliente.id,
+    typ: 'cliente',
     status: cliente.status,
     iss: ISS,
     aud: AUD,
@@ -28,7 +29,6 @@ function assinar(cliente, chavePrivada) {
 
   return jwt.sign(payload, chavePrivada, {
     algorithm: 'RS256',
-    header: { typ: 'cliente' },
   });
 }
 

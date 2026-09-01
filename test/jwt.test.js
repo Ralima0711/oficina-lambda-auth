@@ -29,11 +29,13 @@ test('assina JWT em RS256 com claims corretos', () => {
   assert.equal(decoded.exp - decoded.iat, 3600);
 });
 
-test('token não é assinado em HS256 e tem typ=cliente', () => {
+test('token é assinado em RS256 e tem typ=cliente no payload', () => {
   const cliente = { id: 1, cpf: '52998224725', status: 'ativo' };
   const token = assinar(cliente, privateKey);
 
   const header = JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString());
   assert.equal(header.alg, 'RS256');
-  assert.equal(header.typ, 'cliente');
+
+  const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] });
+  assert.equal(decoded.typ, 'cliente');
 });
