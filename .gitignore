@@ -1,0 +1,8 @@
+node_modules/
+*.log
+.env
+.aws-sam/
+
+env.json
+tmp_private.pem
+tmp_public.pem

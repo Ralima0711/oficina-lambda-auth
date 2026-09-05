@@ -1,0 +1,42 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  oficina-lambda-auth — Function serverless de autenticação por CPF que emite
+  JWT RS256 (Tech Challenge SOAT Fase 3).
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 128
+    Runtime: nodejs20.x
+    Handler: src/handler.handler
+    Environment:
+      Variables:
+        JWT_ISS: oficina-lambda-auth
+        JWT_AUD: oficina-mecanica-api
+        JWT_TTL: '3600'
+        SSM_PRIVATE_KEY_PARAM: /oficina/auth/jwt-private-key
+
+Resources:
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Events:
+        AuthApi:
+          Type: Api
+          Properties:
+            Path: /auth
+            Method: post
+      Policies:
+        - Statement:
+            - Sid: ReadJwtPrivateKey
+              Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/oficina/auth/jwt-private-key'
+
+Outputs:
+  AuthApiEndpoint:
+    Description: Endpoint do POST /auth
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/auth'
