@@ -12,7 +12,7 @@ permissions:
 
 env:
   AWS_DEFAULT_REGION: us-east-1
-  HAS_AWS: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+  HAS_AWS: "${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}"
 
 jobs:
   build:
@@ -65,7 +65,8 @@ jobs:
 
       - name: Skip deploy (sem credenciais AWS)
         if: env.HAS_AWS != 'true'
-        run: echo "Deploy ignorado: configure AWS_ACCESS_KEY_ID e AWS_SECRET_ACCESS_KEY nos secrets."
+        run: |
+          echo "Deploy ignorado. Cadastre AWS_ACCESS_KEY_ID e AWS_SECRET_ACCESS_KEY nos secrets."
 
       - name: Configure AWS credentials
         if: env.HAS_AWS == 'true'
