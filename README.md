@@ -1,13 +1,13 @@
 # oficina-lambda-auth
 
-Function serverless de autenticação do **Tech Challenge SOAT — Fase 3** (Grupo 32).
+Function serverless de autenticação do **Tech Challenge SOAT — Fase 3** (Grupo 183).
 Valida o **CPF** do cliente, consulta sua existência e status na base de dados e emite um **JWT (RS256)** para consumo das APIs protegidas da oficina.
 
 > Repositório 1 de 4 da Fase 3. Ver também: [oficina-mecanica-api](https://github.com/Ralima0711/oficina-mecanica-api) · [oficina-infra-k8s](https://github.com/Ralima0711/oficina-infra-k8s) · [oficina-infra-database](https://github.com/Ralima0711/oficina-infra-database)
 
 ## Propósito
 
-Autenticação desacoplada da aplicação principal, exposta via **API Gateway**. Substitui o login por e-mail/senha da Fase 2 pela autenticação por CPF exigida na Fase 3.
+Autenticação desacoplada da aplicação principal, exposta via **API Gateway (Kong, no EKS)**. Substitui o login por e-mail/senha da Fase 2 pela autenticação por CPF exigida na Fase 3.
 
 ## Tecnologias
 
@@ -15,7 +15,7 @@ Autenticação desacoplada da aplicação principal, exposta via **API Gateway**
 |---|---|
 | AWS Lambda | Runtime serverless da function |
 | AWS SAM | Empacotamento e deploy da function |
-| AWS API Gateway | Exposição e roteamento do endpoint `/auth` |
+| Kong (API Gateway no EKS) | Exposição e roteamento do endpoint `/auth` |
 | AWS SSM Parameter Store | Guarda da chave privada RSA (SecureString) |
 | JWT (RS256) | Token assinado com chave privada; validado na API pela chave pública |
 | GitHub Actions | Pipeline CI/CD (build → deploy) |
@@ -44,7 +44,7 @@ O deploy é automatizado via GitHub Actions nas branches `homolog` e `main`.
 ## Diagrama
 
 ```
-Cliente ──POST /auth {cpf}──▶ API Gateway ──▶ Lambda ──▶ RDS (consulta CPF)
+Cliente ──POST /auth {cpf}──▶ Kong (API Gateway) ──▶ Lambda ──▶ RDS (consulta CPF)
                                                  │
                                      assina JWT (RS256) → 200 { token }
 ```
@@ -58,6 +58,6 @@ Cliente ──POST /auth {cpf}──▶ API Gateway ──▶ Lambda ──▶ R
 
 Branch `main` protegida. Todo merge via **Pull Request** com aprovação de outro membro.
 
-## Time — Grupo 32
+## Time — Grupo 183
 
 Roberta Lima (Tech Lead) · Gustavo Delfino (Infra/CI-CD) · David Tavares (Infra/CI-CD) · Johny David (Aplicação)
