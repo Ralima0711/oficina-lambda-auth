@@ -25,9 +25,19 @@ jobs:
         with:
           python-version: "3.12"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - uses: aws-actions/setup-sam@v2
         with:
           use-installer: true
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
 
       - name: SAM build
         run: sam build
@@ -44,6 +54,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
       - uses: aws-actions/setup-sam@v2
         with:
@@ -64,38 +78,18 @@ jobs:
 
       - name: SAM build
         if: env.HAS_AWS == 'true'
-        run: sam build
+        run: |
+          npm ci
+          sam build
 
       - name: SAM deploy
         if: env.HAS_AWS == 'true'
         env:
           STACK: ${{ github.ref == 'refs/heads/main' && 'oficina-lambda-auth-prod' || 'oficina-lambda-auth-homolog' }}
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          LAMBDA_SUBNET_IDS: ${{ secrets.LAMBDA_SUBNET_IDS }}
-          LAMBDA_SECURITY_GROUP_IDS: ${{ secrets.LAMBDA_SECURITY_GROUP_IDS }}
         run: |
-          OVERRIDES=(
-            JwtIss=oficina-lambda-auth
-            JwtAud=oficina-mecanica-api
-            JwtTtl=3600
-            DbHost="$DB_HOST"
-            DbName="${DB_NAME:-oficina_mecanica}"
-            DbUser="$DB_USER"
-            DbPassword="$DB_PASSWORD"
-          )
-          if [ -n "$LAMBDA_SUBNET_IDS" ]; then
-            OVERRIDES+=(
-              "VpcSubnetIds=$LAMBDA_SUBNET_IDS"
-              "VpcSecurityGroupIds=$LAMBDA_SECURITY_GROUP_IDS"
-            )
-          fi
           sam deploy \
             --stack-name "$STACK" \
             --resolve-s3 \
             --capabilities CAPABILITY_IAM \
             --no-confirm-changeset \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides "${OVERRIDES[@]}"
+            --no-fail-on-empty-changeset

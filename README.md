@@ -9,7 +9,7 @@ Valida o **CPF** do cliente, consulta sua existência e status na base de dados 
 
 Autenticação desacoplada da aplicação principal, exposta via **API Gateway (Kong, no EKS)**. Substitui o login por e-mail/senha da Fase 2 pela autenticação por CPF exigida na Fase 3.
 
-A pipeline SAM (`homolog` / `main`) já está neste repositório. O handler atual valida o CPF e devolve `501` até a consulta ao RDS e a assinatura RS256 serem implementadas (contrato: Johny).
+A pipeline SAM (`homolog` / `main`) já está neste repositório. O handler valida CPF, consulta o cliente (hoje via mock até o RDS) e emite JWT RS256.
 
 ## Tecnologias
 
@@ -33,6 +33,19 @@ Especificação completa: [docs/contrato-autenticacao.md no repo da aplicação]
 sam build
 sam local invoke AuthFunction -e events/auth.json
 ```
+
+> **Nota:** a Lambda lê a chave privada do SSM em runtime. Para rodar localmente, crie o parâmetro
+> `/oficina/auth/jwt-private-key` (SecureString) com a chave privada RSA, ou injete um mock nos testes.
+
+## Testes unitários
+
+```bash
+npm install
+npm test
+```
+
+Cobrem: validação de CPF (dígitos verificadores), assinatura RS256 com os claims do contrato e
+as respostas 200/400/404/403/500 do `POST /auth`.
 
 ## Deploy
 

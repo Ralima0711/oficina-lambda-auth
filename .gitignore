@@ -1,8 +1,13 @@
 .aws-sam/
 samconfig.toml
-__pycache__/
-*.pyc
-.venv/
+node_modules/
+*.log
 .env
 .DS_Store
 events/auth.local.json
+env.json
+tmp_private.pem
+tmp_public.pem
+__pycache__/
+*.pyc
+.venv/

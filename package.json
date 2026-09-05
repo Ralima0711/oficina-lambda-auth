@@ -1,0 +1,19 @@
+{
+  "name": "oficina-lambda-auth",
+  "version": "1.0.0",
+  "description": "Lambda de autenticação por CPF que emite JWT RS256 (Tech Challenge SOAT Fase 3)",
+  "main": "src/handler.js",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ssm": "^3.600.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.3"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}
