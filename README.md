@@ -9,7 +9,7 @@ Valida o **CPF** do cliente, consulta sua existência e status na base de dados 
 
 Autenticação desacoplada da aplicação principal, exposta via **API Gateway (Kong, no EKS)**. Substitui o login por e-mail/senha da Fase 2 pela autenticação por CPF exigida na Fase 3.
 
-A pipeline SAM (`homolog` / `main`) já está neste repositório. O handler valida CPF, consulta o cliente (hoje via mock até o RDS) e emite JWT RS256.
+A pipeline SAM (`homolog` / `main`) já está neste repositório. O handler valida CPF, consulta o cliente no **RDS PostgreSQL** (com fallback mock via `USE_MOCK_DB`) e emite JWT RS256.
 
 ## Tecnologias
 
@@ -37,6 +37,19 @@ sam local invoke AuthFunction -e events/auth.json
 > **Nota:** a Lambda lê a chave privada do SSM em runtime. Para rodar localmente, crie o parâmetro
 > `/oficina/auth/jwt-private-key` (SecureString) com a chave privada RSA, ou injete um mock nos testes.
 
+### Consulta ao banco (RDS x mock)
+
+Por padrão a Lambda consulta o **RDS PostgreSQL** usando as variáveis `DB_HOST`, `DB_PORT`, `DB_NAME`,
+`DB_USER` e `DB_PASSWORD` (sem valores hardcoded — definidas no deploy, ver seção Deploy).
+
+Para rodar **sem banco** (testes locais/CI), mantenha o mock atrás da flag:
+
+```bash
+USE_MOCK_DB=true sam local invoke AuthFunction -e events/auth.json
+```
+
+A coluna consultada é `clientes.documento` (schema das migrations do `oficina-mecanica-api`).
+
 ## Testes unitários
 
 ```bash
@@ -57,7 +70,7 @@ sam deploy --guided   # primeira vez; depois: sam deploy
 
 O deploy é automatizado via GitHub Actions nas branches `homolog` e `main`.
 
-Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`. Opcionais: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `LAMBDA_SUBNET_IDS`, `LAMBDA_SECURITY_GROUP_IDS` (RDS privado).
+Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`. Opcionais: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `LAMBDA_SUBNET_IDS`, `LAMBDA_SECURITY_GROUP_IDS` (RDS privado). A senha do banco nunca vai no código — apenas como secret/variável do deploy.
 
 Após o deploy, copie o output `AuthFunctionName` para o secret `AUTH_LAMBDA_FUNCTION_NAME` do repo `oficina-infra-k8s`.
 

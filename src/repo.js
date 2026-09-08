@@ -1,14 +1,26 @@
 'use strict';
 
+const { Pool } = require('pg');
+
 /**
- * Repositório de clientes.
+ * Repositório de clientes — consulta o RDS PostgreSQL real.
  *
- * Enquanto o RDS (`oficina-infra-database`) não estiver provisionado, usamos um
- * MOCK atrás da função `buscarClientePorCpf`. Para trocar pela consulta real,
- * basta substituir a implementação abaixo por uma query no PostgreSQL.
+ * A tabela `clientes` segue as migrations do repo oficina-mecanica-api:
+ * o CPF do cliente vive na coluna `documento` (11 dígitos, sem máscara).
+ * Ainda não existe coluna `status` na tabela, então todo cliente encontrado
+ * é considerado 'ativo'. Quando o schema ganhar `status`, basta adicioná-lo
+ * ao SELECT abaixo e devolver o valor real.
+ *
+ * Credenciais/endpoint vêm de variáveis de ambiente (nada hardcoded):
+ *   DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+ *
+ * Para rodar SEM banco (testes locais), defina USE_MOCK_DB=true.
  */
 
-// Mock de clientes. `status` pode ser 'ativo' ou 'inativo'.
+const USE_MOCK_DB =
+  process.env.USE_MOCK_DB === 'true' || process.env.USE_MOCK_DB === '1';
+
+// Mock de clientes (USE_MOCK_DB=true). `status` pode ser 'ativo' ou 'inativo'.
 const MOCK_CLIENTES = [
   {
     id: 1,
@@ -24,15 +36,58 @@ const MOCK_CLIENTES = [
   },
 ];
 
+let pool = null;
+
+function obterPool() {
+  if (!pool) {
+    pool = new Pool({
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT || 5432),
+      database: process.env.DB_NAME,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      // Lambda: uma conexão por container é suficiente.
+      max: 1,
+      connectionTimeoutMillis: 3000,
+      idleTimeoutMillis: 10000,
+    });
+  }
+  return pool;
+}
+
+async function buscarNoRds(cpf) {
+  const { rows } = await obterPool().query(
+    `SELECT id, nome, documento AS cpf
+       FROM clientes
+      WHERE documento = $1
+      LIMIT 1`,
+    [cpf]
+  );
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return {
+    id: Number(rows[0].id),
+    cpf: rows[0].cpf,
+    nome: rows[0].nome,
+    status: 'ativo',
+  };
+}
+
 /**
  * Busca um cliente pelo CPF (11 dígitos, sem máscara).
  * @param {string} cpf
  * @returns {Promise<{ id: number, cpf: string, nome: string, status: string } | null>}
  */
 async function buscarClientePorCpf(cpf) {
-  // TODO: substituir o mock pela consulta real no RDS PostgreSQL.
-  const cliente = MOCK_CLIENTES.find((c) => c.cpf === cpf);
-  return cliente ? { ...cliente } : null;
+  if (USE_MOCK_DB) {
+    const cliente = MOCK_CLIENTES.find((c) => c.cpf === cpf);
+    return cliente ? { ...cliente } : null;
+  }
+
+  return buscarNoRds(cpf);
 }
 
 module.exports = { buscarClientePorCpf };
