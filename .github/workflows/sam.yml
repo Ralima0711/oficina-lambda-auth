@@ -87,10 +87,47 @@ jobs:
         if: env.HAS_AWS == 'true'
         env:
           STACK: ${{ github.ref == 'refs/heads/main' && 'oficina-lambda-auth-prod' || 'oficina-lambda-auth-homolog' }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          LAMBDA_VPC_ID: ${{ secrets.LAMBDA_VPC_ID }}
+          LAMBDA_SUBNET_IDS: ${{ secrets.LAMBDA_SUBNET_IDS }}
+          LAMBDA_RDS_SG_ID: ${{ secrets.LAMBDA_RDS_SG_ID }}
         run: |
-          sam deploy \
-            --stack-name "$STACK" \
-            --resolve-s3 \
-            --capabilities CAPABILITY_IAM \
-            --no-confirm-changeset \
-            --no-fail-on-empty-changeset
+          OVERRIDES=()
+          if [ -n "$DB_HOST" ]; then
+            OVERRIDES+=(
+              "DbHost=$DB_HOST"
+              "DbPort=${DB_PORT:-5432}"
+              "DbName=$DB_NAME"
+              "DbUser=$DB_USER"
+              "DbPassword=$DB_PASSWORD"
+            )
+          fi
+          if [ -n "$LAMBDA_VPC_ID" ]; then
+            OVERRIDES+=("VpcId=$LAMBDA_VPC_ID")
+          fi
+          if [ -n "$LAMBDA_SUBNET_IDS" ]; then
+            OVERRIDES+=("VpcSubnetIds=$LAMBDA_SUBNET_IDS")
+          fi
+          if [ -n "$LAMBDA_RDS_SG_ID" ]; then
+            OVERRIDES+=("RdsSecurityGroupId=$LAMBDA_RDS_SG_ID")
+          fi
+          if [ ${#OVERRIDES[@]} -gt 0 ]; then
+            sam deploy \
+              --stack-name "$STACK" \
+              --resolve-s3 \
+              --capabilities CAPABILITY_IAM \
+              --no-confirm-changeset \
+              --no-fail-on-empty-changeset \
+              --parameter-overrides "${OVERRIDES[@]}"
+          else
+            sam deploy \
+              --stack-name "$STACK" \
+              --resolve-s3 \
+              --capabilities CAPABILITY_IAM \
+              --no-confirm-changeset \
+              --no-fail-on-empty-changeset
+          fi

@@ -4,11 +4,10 @@ Description: >
   oficina-lambda-auth — Function serverless de autenticação por CPF que emite
   JWT RS256 (Tech Challenge SOAT Fase 3).
 
-# Endpoint e credenciais do RDS. Valores são passados no deploy
-# (parameter-overrides / Secrets Manager) — nada de senha hardcoded aqui.
-# Nota: o RDS do lab é privado (VPC); a função precisa de VpcConfig
-# (subnets privadas + security group) para alcançá-lo — alinhar os IDs com o
-# time de infra antes do teste ponta-a-ponta.
+# RDS e VPC: parâmetros no deploy (nada de senha no Git).
+# O RDS do lab é privado; VpcConfig nas mesmas subnets + SG próprio com
+# egress 5432 para o SG do banco. O SG do RDS já libera 5432 na CIDR da VPC.
+# Sem NAT, SSM (chave JWT) pode falhar — use VPC endpoints ou JWT_PRIVATE_KEY.
 Parameters:
   DbHost:
     Type: String
@@ -26,11 +25,23 @@ Parameters:
     Type: String
     Default: ''
     NoEcho: true
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Default: vpc-0c0cfeacc9c94245c
+    Description: VPC do lab (a mesma do RDS)
+  VpcSubnetIds:
+    Type: CommaDelimitedList
+    Default: subnet-0e56277b8609e5c63,subnet-05dfd6d5578233ae7
+    Description: Duas subnets em AZs diferentes (as mesmas do RDS)
+  RdsSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Default: sg-074b6d544cb1e43b0
+    Description: SG do RDS (oficina-mecanica-db-sg)
 
 Globals:
   Function:
-    Timeout: 10
-    MemorySize: 128
+    Timeout: 15
+    MemorySize: 256
     Runtime: nodejs20.x
     Handler: src/handler.handler
     Environment:
@@ -46,10 +57,34 @@ Globals:
         DB_PASSWORD: !Ref DbPassword
 
 Resources:
+  AuthFunctionSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Lambda auth — egress RDS 5432 e HTTPS (SSM)
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          DestinationSecurityGroupId: !Ref RdsSecurityGroupId
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Project
+          Value: oficina-mecanica
+        - Key: Stack
+          Value: lambda-auth
+
   AuthFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
+      VpcConfig:
+        SubnetIds: !Ref VpcSubnetIds
+        SecurityGroupIds:
+          - !Ref AuthFunctionSg
       Events:
         AuthApi:
           Type: Api
@@ -57,6 +92,7 @@ Resources:
             Path: /auth
             Method: post
       Policies:
+        - VPCAccessPolicy: {}
         - Statement:
             - Sid: ReadJwtPrivateKey
               Effect: Allow
@@ -68,6 +104,9 @@ Outputs:
   AuthFunctionName:
     Description: Nome da function para o plugin aws-lambda do Kong
     Value: !Ref AuthFunction
+  AuthFunctionSecurityGroupId:
+    Description: SG da Lambda (egress para o SG do RDS)
+    Value: !Ref AuthFunctionSg
   AuthApiEndpoint:
     Description: Endpoint do POST /auth
     Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/auth'

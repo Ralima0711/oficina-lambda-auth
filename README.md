@@ -70,7 +70,9 @@ sam deploy --guided   # primeira vez; depois: sam deploy
 
 O deploy é automatizado via GitHub Actions nas branches `homolog` e `main`.
 
-Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`. Opcionais: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `LAMBDA_SUBNET_IDS`, `LAMBDA_SECURITY_GROUP_IDS` (RDS privado). A senha do banco nunca vai no código — apenas como secret/variável do deploy.
+A function entra na **VPC** (mesmas subnets do RDS). O template cria um SG só da Lambda com egress `5432` para o SG do banco (`oficina-mecanica-db-sg`). Sem NAT, a chamada ao SSM pode falhar: crie VPC endpoints (`ssm`, `logs`) ou injete `JWT_PRIVATE_KEY` só no lab.
+
+Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`. Opcionais (parameter-overrides): `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `LAMBDA_VPC_ID`, `LAMBDA_SUBNET_IDS`, `LAMBDA_RDS_SG_ID`. A senha do banco nunca vai no código.
 
 Após o deploy, copie o output `AuthFunctionName` para o secret `AUTH_LAMBDA_FUNCTION_NAME` do repo `oficina-infra-k8s`.
 
