@@ -37,6 +37,9 @@ Resources:
               Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/oficina/auth/jwt-private-key'
 
 Outputs:
+  AuthFunctionName:
+    Description: Nome da function para o plugin aws-lambda do Kong
+    Value: !Ref AuthFunction
   AuthApiEndpoint:
     Description: Endpoint do POST /auth
     Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/auth'

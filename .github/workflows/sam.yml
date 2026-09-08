@@ -1,0 +1,96 @@
+name: SAM CI/CD
+
+on:
+  push:
+    branches: [homolog, main]
+  pull_request:
+    branches: [homolog, main]
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_DEFAULT_REGION: us-east-1
+  HAS_AWS: "${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}"
+
+jobs:
+  build:
+    name: SAM build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: SAM build
+        run: sam build
+
+  deploy:
+    name: SAM deploy
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/homolog' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'homolog' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Skip deploy (sem credenciais AWS)
+        if: env.HAS_AWS != 'true'
+        run: |
+          echo "Deploy ignorado. Cadastre AWS_ACCESS_KEY_ID e AWS_SECRET_ACCESS_KEY nos secrets."
+
+      - name: Configure AWS credentials
+        if: env.HAS_AWS == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: SAM build
+        if: env.HAS_AWS == 'true'
+        run: |
+          npm ci
+          sam build
+
+      - name: SAM deploy
+        if: env.HAS_AWS == 'true'
+        env:
+          STACK: ${{ github.ref == 'refs/heads/main' && 'oficina-lambda-auth-prod' || 'oficina-lambda-auth-homolog' }}
+        run: |
+          sam deploy \
+            --stack-name "$STACK" \
+            --resolve-s3 \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset

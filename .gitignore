@@ -1,8 +1,13 @@
+.aws-sam/
+samconfig.toml
 node_modules/
 *.log
 .env
-.aws-sam/
-
+.DS_Store
+events/auth.local.json
 env.json
 tmp_private.pem
 tmp_public.pem
+__pycache__/
+*.pyc
+.venv/
