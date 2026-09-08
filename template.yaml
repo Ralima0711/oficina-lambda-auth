@@ -37,6 +37,10 @@ Parameters:
     Type: AWS::EC2::SecurityGroup::Id
     Default: sg-074b6d544cb1e43b0
     Description: SG do RDS (oficina-mecanica-db-sg)
+  LabRoleArn:
+    Type: String
+    Default: arn:aws:iam::085242768695:role/LabRole
+    Description: AWS Academy nao permite iam:CreateRole; usa o LabRole existente
 
 Globals:
   Function:
@@ -60,7 +64,7 @@ Resources:
   AuthFunctionSg:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Lambda auth — egress RDS 5432 e HTTPS (SSM)
+      GroupDescription: Lambda auth egress RDS 5432 and HTTPS SSM
       VpcId: !Ref VpcId
       SecurityGroupEgress:
         - IpProtocol: tcp
@@ -81,6 +85,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
+      Role: !Ref LabRoleArn
       VpcConfig:
         SubnetIds: !Ref VpcSubnetIds
         SecurityGroupIds:
@@ -91,14 +96,6 @@ Resources:
           Properties:
             Path: /auth
             Method: post
-      Policies:
-        - VPCAccessPolicy: {}
-        - Statement:
-            - Sid: ReadJwtPrivateKey
-              Effect: Allow
-              Action:
-                - ssm:GetParameter
-              Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/oficina/auth/jwt-private-key'
 
 Outputs:
   AuthFunctionName:
