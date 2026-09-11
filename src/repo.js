@@ -38,6 +38,28 @@ const MOCK_CLIENTES = [
 
 let pool = null;
 
+/**
+ * TLS da conexão com o RDS.
+ *
+ * Ordem: (1) se DB_SSL_CA vier preenchida, valida a cadeia contra esse CA —
+ * é o modo correto; (2) DB_SSL_INSECURE=true criptografa mas NÃO valida o
+ * certificado — exceção consciente para o lab do AWS Academy, onde o CA
+ * bundle não está disponível; (3) padrão: valida a cadeia.
+ *
+ * A opção (2) nunca deve ser usada em produção.
+ */
+function configurarSsl() {
+  if (process.env.DB_SSL_CA) {
+    return { ca: process.env.DB_SSL_CA, rejectUnauthorized: true };
+  }
+
+  if (process.env.DB_SSL_INSECURE === 'true') {
+    return { rejectUnauthorized: false };
+  }
+
+  return { rejectUnauthorized: true };
+}
+
 function obterPool() {
   if (!pool) {
     pool = new Pool({
@@ -46,7 +68,7 @@ function obterPool() {
       database: process.env.DB_NAME,
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
-      ssl: { rejectUnauthorized: false },
+      ssl: configurarSsl(),
       // Lambda: uma conexão por container é suficiente.
       max: 1,
       connectionTimeoutMillis: 3000,

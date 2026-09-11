@@ -95,39 +95,50 @@ jobs:
           LAMBDA_VPC_ID: ${{ secrets.LAMBDA_VPC_ID }}
           LAMBDA_SUBNET_IDS: ${{ secrets.LAMBDA_SUBNET_IDS }}
           LAMBDA_RDS_SG_ID: ${{ secrets.LAMBDA_RDS_SG_ID }}
+          LAB_ROLE_ARN: ${{ secrets.LAB_ROLE_ARN }}
+          DB_SSL_INSECURE: ${{ secrets.DB_SSL_INSECURE }}
+          JWT_PRIVATE_KEY_B64: ${{ secrets.JWT_PRIVATE_KEY_B64 }}
         run: |
-          OVERRIDES=()
-          if [ -n "$DB_HOST" ]; then
-            OVERRIDES+=(
-              "DbHost=$DB_HOST"
-              "DbPort=${DB_PORT:-5432}"
-              "DbName=$DB_NAME"
-              "DbUser=$DB_USER"
-              "DbPassword=$DB_PASSWORD"
-            )
+          set -eo pipefail
+
+          # O template não guarda nenhum identificador de ambiente: se um
+          # secret faltar, o deploy falha aqui com o nome dele — em vez de
+          # subir uma função sem VPC que só erra em runtime.
+          FALTANDO=()
+          for VAR in DB_HOST DB_NAME DB_USER DB_PASSWORD \
+                     LAMBDA_VPC_ID LAMBDA_SUBNET_IDS LAMBDA_RDS_SG_ID LAB_ROLE_ARN; do
+            if [ -z "${!VAR}" ]; then
+              FALTANDO+=("$VAR")
+            fi
+          done
+          if [ ${#FALTANDO[@]} -gt 0 ]; then
+            echo "::error::Secrets obrigatorios ausentes: ${FALTANDO[*]}"
+            exit 1
           fi
-          if [ -n "$LAMBDA_VPC_ID" ]; then
-            OVERRIDES+=("VpcId=$LAMBDA_VPC_ID")
+
+          # Sem VPC endpoint para o SSM, a chave precisa vir por parametro.
+          if [ -z "$JWT_PRIVATE_KEY_B64" ]; then
+            echo "::warning::JWT_PRIVATE_KEY_B64 vazio - a funcao vai buscar a chave no SSM."
           fi
-          if [ -n "$LAMBDA_SUBNET_IDS" ]; then
-            OVERRIDES+=("VpcSubnetIds=$LAMBDA_SUBNET_IDS")
-          fi
-          if [ -n "$LAMBDA_RDS_SG_ID" ]; then
-            OVERRIDES+=("RdsSecurityGroupId=$LAMBDA_RDS_SG_ID")
-          fi
-          if [ ${#OVERRIDES[@]} -gt 0 ]; then
-            sam deploy \
-              --stack-name "$STACK" \
-              --resolve-s3 \
-              --capabilities CAPABILITY_IAM \
-              --no-confirm-changeset \
-              --no-fail-on-empty-changeset \
-              --parameter-overrides "${OVERRIDES[@]}"
-          else
-            sam deploy \
-              --stack-name "$STACK" \
-              --resolve-s3 \
-              --capabilities CAPABILITY_IAM \
-              --no-confirm-changeset \
-              --no-fail-on-empty-changeset
-          fi
+
+          OVERRIDES=(
+            "DbHost=$DB_HOST"
+            "DbPort=${DB_PORT:-5432}"
+            "DbName=$DB_NAME"
+            "DbUser=$DB_USER"
+            "DbPassword=$DB_PASSWORD"
+            "DbSslInsecure=${DB_SSL_INSECURE:-false}"
+            "VpcId=$LAMBDA_VPC_ID"
+            "VpcSubnetIds=$LAMBDA_SUBNET_IDS"
+            "RdsSecurityGroupId=$LAMBDA_RDS_SG_ID"
+            "LabRoleArn=$LAB_ROLE_ARN"
+            "JwtPrivateKeyB64=$JWT_PRIVATE_KEY_B64"
+          )
+
+          sam deploy \
+            --stack-name "$STACK" \
+            --resolve-s3 \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "${OVERRIDES[@]}"

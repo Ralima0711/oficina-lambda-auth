@@ -34,8 +34,21 @@ function responder(statusCode, body) {
  * SSM fake para uso local (sam local invoke / testes) que lê a chave privada
  * da variável de ambiente JWT_PRIVATE_KEY, evitando a chamada ao SSM.
  */
-function ssmLocal() {
-  const chave = process.env.JWT_PRIVATE_KEY;
+function chavePrivadaDaEnv() {
+  if (process.env.JWT_PRIVATE_KEY) {
+    return process.env.JWT_PRIVATE_KEY;
+  }
+
+  // PEM tem quebras de linha; em secret/parâmetro do CloudFormation ele viaja
+  // em base64. Usado enquanto a função na VPC não alcança o SSM (ADR-0004).
+  if (process.env.JWT_PRIVATE_KEY_B64) {
+    return Buffer.from(process.env.JWT_PRIVATE_KEY_B64, 'base64').toString('utf8');
+  }
+
+  return null;
+}
+
+function ssmLocal(chave = chavePrivadaDaEnv()) {
   if (!chave) {
     throw new Error('JWT_PRIVATE_KEY não configurada para modo local.');
   }
@@ -106,9 +119,12 @@ function criarHandler({ buscarClientePorCpf: buscar, ssm }) {
 }
 
 // Handler padrão usado pelo SAM em produção.
-// Em modo local (sam local invoke), JWT_PRIVATE_KEY pode ser usada para evitar o SSM.
-const ssm = process.env.JWT_PRIVATE_KEY
-  ? ssmLocal()
+// Caminho normal: a chave privada vem do SSM Parameter Store (ADR-0004).
+// Se JWT_PRIVATE_KEY (local) ou JWT_PRIVATE_KEY_B64 (lab sem VPC endpoint)
+// estiver preenchida, ela tem precedência e o SSM não é chamado.
+const chaveDaEnv = chavePrivadaDaEnv();
+const ssm = chaveDaEnv
+  ? ssmLocal(chaveDaEnv)
   : new SSMClient({ region: process.env.AWS_REGION || 'us-east-1' });
 exports.handler = criarHandler({ buscarClientePorCpf, ssm });
 
