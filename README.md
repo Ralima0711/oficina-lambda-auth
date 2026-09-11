@@ -76,6 +76,10 @@ A function entra na **VPC** (mesmas subnets do RDS). O template cria um SG só d
 
 ### Secrets do repositório
 
+Cadastre em **Settings → Secrets and variables → Actions → Repository secrets**.
+Se usar Environment (`homolog` / `production`), o job de deploy lê os dois:
+o `HAS_AWS` é avaliado **no job** (depois de `environment:`), não no topo do workflow.
+
 | Secret | Obrigatório | Para quê |
 |---|---|---|
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` | sim | credenciais do deploy |
