@@ -114,6 +114,10 @@ Resources:
         - Key: Stack
           Value: lambda-auth
 
+  # Não misturar Role (LabRole) com Policies: o transform SAM trata
+  # Policies: AWS::NoValue como policy inválida (index 0). No Academy a
+  # LabRole já permite VPC, logs e SSM. Fora do Academy o SAM cria a role
+  # básica; a chave JWT entra por JwtPrivateKeyB64.
   AuthFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -125,18 +129,6 @@ Resources:
           SecurityGroupIds:
             - !Ref AuthFunctionSg
         - !Ref 'AWS::NoValue'
-      # Quando o SAM cria a role (fora do Academy), ela vem com o mínimo:
-      # ler só o parâmetro da chave privada e anexar a função à VPC.
-      Policies: !If
-        - UsarRoleExistente
-        - !Ref 'AWS::NoValue'
-        - - Statement:
-              - Sid: ReadJwtPrivateKey
-                Effect: Allow
-                Action:
-                  - ssm:GetParameter
-                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/oficina/auth/jwt-private-key'
-          - VPCAccessPolicy: {}
       Events:
         AuthApi:
           Type: Api
