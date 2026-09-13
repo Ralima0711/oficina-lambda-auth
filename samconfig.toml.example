@@ -7,3 +7,5 @@ region = "us-east-1"
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = false
 fail_on_empty_changeset = false
+# Preencha no sam deploy (não commitar senha nem chave privada):
+# parameter_overrides = "DbHost=... DbPort=5432 DbName=oficina_mecanica DbUser=oficina_admin DbPassword=... DbSslInsecure=true VpcId=vpc-... VpcSubnetIds=subnet-...,subnet-... RdsSecurityGroupId=sg-... LabRoleArn=arn:aws:iam::<conta>:role/LabRole JwtPrivateKeyB64=$(base64 -w0 chave.pem)"
