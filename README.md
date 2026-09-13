@@ -85,7 +85,7 @@ o `HAS_AWS` é avaliado **no job** (depois de `environment:`), não no topo do w
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` | sim | credenciais do deploy |
 | `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | sim | conexão com o RDS (`DB_PORT` opcional, default 5432) |
 | `LAMBDA_VPC_ID`, `LAMBDA_SUBNET_IDS`, `LAMBDA_RDS_SG_ID` | sim | colocar a função na VPC do RDS |
-| `LAB_ROLE_ARN` | sim (Academy) | o AWS Academy bloqueia `iam:CreateRole`, então reusamos a `LabRole`. Fora do Academy, deixe vazio e o SAM cria a role com o mínimo: ler só o parâmetro da chave e anexar a função à VPC |
+| `LAB_ROLE_ARN` | sim (Academy) | o AWS Academy bloqueia `iam:CreateRole`, então reusamos a `LabRole`. O template **não** declara `Policies` junto com essa role — o SAM rejeita a combinação. Fora do Academy, deixe vazio: o SAM cria a role padrão; a chave JWT continua em `JWT_PRIVATE_KEY_B64` |
 | `JWT_PRIVATE_KEY_B64` | enquanto não houver VPC endpoint | chave privada RSA em **base64**: `base64 -w0 chave.pem` |
 | `DB_SSL_INSECURE` | só no lab | `true` aceita o certificado do RDS sem validar a cadeia |
 
